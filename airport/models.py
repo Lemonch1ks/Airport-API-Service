@@ -7,7 +7,6 @@ from airport_service import settings
 class Crew(models.Model):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
-    flight = models.ManyToManyField("Flight", related_name="crews")
 
     def __str__(self):
         return self.first_name + " " + self.last_name
