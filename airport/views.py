@@ -10,6 +10,8 @@ class AirportViewSet(
     viewsets.GenericViewSet,
     mixins.ListModelMixin,
     mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.RetrieveModelMixin,
 ):
     queryset = Airport.objects.all()
     serializer_class = AirportSerializer
