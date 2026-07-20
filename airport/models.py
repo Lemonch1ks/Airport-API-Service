@@ -7,6 +7,7 @@ from airport_service import settings
 class Crew(models.Model):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
+    flight = models.ManyToManyField("Flight", related_name="crews")
 
     def __str__(self):
         return self.first_name + " " + self.last_name
@@ -25,12 +26,21 @@ class Airplane(models.Model):
     name = models.CharField(max_length=100)
     rows = models.IntegerField()
     seats_in_row =  models.IntegerField()
-    airplane_type = models.ForeignKey(AirplaneType, on_delete=models.CASCADE)
+    airplane_type = models.ForeignKey(
+        AirplaneType,
+        on_delete=models.CASCADE,
+        related_name="airplanes"
+    )
 
 
 class Order(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
-    user = ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="orders"
+    )
+
 
 
 class Airport(models.Model):
@@ -39,14 +49,32 @@ class Airport(models.Model):
 
 
 class Route(models.Model):
-    source = models.ForeignKey(Airport, on_delete=models.CASCADE)
-    destination = models.ForeignKey(Airport, on_delete=models.CASCADE)
+    source = models.ForeignKey(
+        Airport,
+        on_delete=models.CASCADE,
+        related_name="routes"
+    )
+    destination = models.ForeignKey(
+        Airport,
+        on_delete=models.CASCADE,
+        related_name="routes"
+    )
     distance = models.IntegerField()
 
 
 class Flight(models.Model):
-    route = models.ForeignKey(Route, on_delete=models.CASCADE)
-    airplane = models.ForeignKey(Airplane, on_delete=models.CASCADE)
+    route = models.ForeignKey(
+        Route,
+        on_delete=models.CASCADE,
+        related_name="flights"
+    )
+    airplane = models.ForeignKey(
+        Airplane,
+        on_delete=models.CASCADE,
+        related_name="flights"
+    )
+
+    crew = models.ManyToManyField("Crew", related_name="flights")
     departure_time = models.DateTimeField()
     arrival_time = models.DateTimeField()
 
@@ -54,5 +82,13 @@ class Flight(models.Model):
 class Ticket(models.Model):
     row = models.IntegerField()
     seat = models.IntegerField()
-    flight = models.ForeignKey(Flight, on_delete=models.CASCADE)
-    order = models.ForeignKey(Order, on_delete=models.CASCADE)
+    flight = models.ForeignKey(
+        Flight,
+        on_delete=models.CASCADE,
+        related_name="tickets"
+    )
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name="tickets"
+    )
