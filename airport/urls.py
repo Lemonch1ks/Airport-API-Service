@@ -6,5 +6,4 @@ router = routers.DefaultRouter()
 
 urlpatterns = [path("", include(router.urls))]
 
-name_space = "airport"
-    
+app_name = "airport"
