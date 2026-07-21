@@ -28,6 +28,7 @@ from airport.serializers import (
     FlightCreateSerializer,
 )
 
+
 class AirportViewSet(viewsets.ModelViewSet):
     queryset = Airport.objects.all()
     serializer_class = AirportSerializer
@@ -45,7 +46,7 @@ class AirplaneTypeViewSet(viewsets.ModelViewSet):
 
 
 class AirplaneViewSet(viewsets.ModelViewSet):
-    queryset = Airplane.objects.all()
+    queryset = Airplane.objects.all().select_related()
     serializer_class = AirplaneSerializer
     permission_classes = [
         AllowAny,
@@ -66,6 +67,16 @@ class TicketViewSet(viewsets.ModelViewSet):
         AllowAny,
     ]
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        if self.action in ("list", "retrieve"):
+            queryset = queryset.select_related().prefetch_related(
+                "flight__crew",
+            )
+
+        return queryset
+
     def get_serializer_class(self):
         if self.action == "create":
             return TicketCreateSerializer
@@ -73,7 +84,7 @@ class TicketViewSet(viewsets.ModelViewSet):
 
 
 class RouteViewSet(viewsets.ModelViewSet):
-    queryset = Route.objects.all()
+    queryset = Route.objects.all().select_related()
     serializer_class = RouteSerializer
     permission_classes = [
         AllowAny,
@@ -81,7 +92,7 @@ class RouteViewSet(viewsets.ModelViewSet):
 
 
 class FlightViewSet(viewsets.ModelViewSet):
-    queryset = Flight.objects.all()
+    queryset = Flight.objects.all().select_related()
     permission_classes = [
         AllowAny,
     ]

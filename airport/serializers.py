@@ -99,28 +99,26 @@ class RouteSerializer(serializers.ModelSerializer):
 
 
 class FlightSerializer(serializers.ModelSerializer):
-    route = serializers.SlugRelatedField(many=False, read_only=False, slug_field="id" , queryset=Route.objects.all())
+    route = serializers.SlugRelatedField(
+        many=False, read_only=False, slug_field="id", queryset=Route.objects.all().select_related()
+    )
+
     airplane = serializers.SlugRelatedField(
         many=False,
         read_only=False,
         slug_field="id",
-        queryset=Airplane.objects.all(),
+        queryset=Airplane.objects.all().select_related()
     )
 
     class Meta:
         model = Flight
-        fields = (
-            "id",
-            "route",
-            "airplane",
-            "departure_time",
-            "arrival_time",
-            "crew"
-        )
+        fields = ("id", "route", "airplane", "departure_time", "arrival_time", "crew")
 
 
 class FlightCreateSerializer(serializers.ModelSerializer):
-    route = serializers.SlugRelatedField(many=False, read_only=False, slug_field="id" , queryset=Route.objects.all())
+    route = serializers.SlugRelatedField(
+        many=False, read_only=False, slug_field="id", queryset=Route.objects.all()
+    )
     airplane = serializers.SlugRelatedField(
         many=False,
         read_only=False,
@@ -131,14 +129,8 @@ class FlightCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Flight
-        fields = (
-            "id",
-            "route",
-            "airplane",
-            "departure_time",
-            "arrival_time",
-            "crew"
-        )
+        fields = ("id", "route", "airplane", "departure_time", "arrival_time", "crew")
+
 
 class FlightDetailSerializer(serializers.ModelSerializer):
     crew = CrewSerializer(many=True, read_only=True)
