@@ -1,5 +1,5 @@
 from rest_framework import viewsets
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from airport.permissions import IsAdminOrReadOnly
 
@@ -23,8 +23,9 @@ from airport.serializers import (
     TicketSerializer,
     RouteSerializer,
     FlightSerializer,
+    FlightDetailSerializer,
+    TicketCreateSerializer,
 )
-
 
 class AirportViewSet(viewsets.ModelViewSet):
     queryset = Airport.objects.all()
@@ -58,20 +59,16 @@ class CrewViewSet(viewsets.ModelViewSet):
     ]
 
 
-class OrderViewSet(viewsets.ModelViewSet):
-    queryset = Order.objects.all()
-    serializer_class = OrderSerializer
-    permission_classes = [
-        AllowAny,
-    ]
-
-
 class TicketViewSet(viewsets.ModelViewSet):
     queryset = Ticket.objects.all()
-    serializer_class = TicketSerializer
     permission_classes = [
         AllowAny,
     ]
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return TicketCreateSerializer
+        return TicketSerializer
 
 
 class RouteViewSet(viewsets.ModelViewSet):
@@ -84,7 +81,11 @@ class RouteViewSet(viewsets.ModelViewSet):
 
 class FlightViewSet(viewsets.ModelViewSet):
     queryset = Flight.objects.all()
-    serializer_class = FlightSerializer
     permission_classes = [
         AllowAny,
     ]
+
+    def get_serializer_class(self):
+        if self.action == "retrieve":
+            return FlightDetailSerializer
+        return FlightSerializer

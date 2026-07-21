@@ -30,6 +30,8 @@ class Airplane(models.Model):
         on_delete=models.CASCADE,
         related_name="airplanes"
     )
+    def __str__(self):
+        return self.name
 
 
 class Order(models.Model):
@@ -41,10 +43,12 @@ class Order(models.Model):
     )
 
 
-
 class Airport(models.Model):
     name = models.CharField(max_length=100)
     closest_big_city = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.name
 
 
 class Route(models.Model):
@@ -59,6 +63,8 @@ class Route(models.Model):
         related_name="route_destinations"
     )
     distance = models.IntegerField()
+    def __str__(self):
+        return f"{self.source} -> {self.destination}"
 
 
 class Flight(models.Model):
@@ -76,6 +82,11 @@ class Flight(models.Model):
     crew = models.ManyToManyField("Crew", related_name="flights")
     departure_time = models.DateTimeField()
     arrival_time = models.DateTimeField()
+
+    def __str__(self):
+        return (
+            f" id:{self.id} route:{self.route.source} → {self.route.destination}"
+        )
 
 
 class Ticket(models.Model):
