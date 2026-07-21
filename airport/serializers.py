@@ -1,4 +1,3 @@
-from django.conf.locale import fa
 from django.db import transaction
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
@@ -78,13 +77,15 @@ class OrderSerializer(serializers.ModelSerializer):
 class RouteSerializer(serializers.ModelSerializer):
     source = serializers.SlugRelatedField(
         many=False,
-        read_only=True,
+        read_only=False,
         slug_field="name",
+        queryset=Airport.objects.all(),
     )
     destination = serializers.SlugRelatedField(
         many=False,
-        read_only=True,
+        read_only=False,
         slug_field="name",
+        queryset=Airport.objects.all(),
     )
 
     class Meta:
@@ -98,11 +99,12 @@ class RouteSerializer(serializers.ModelSerializer):
 
 
 class FlightSerializer(serializers.ModelSerializer):
-    route = serializers.SlugRelatedField(many=False, read_only=True, slug_field="id")
+    route = serializers.SlugRelatedField(many=False, read_only=False, slug_field="id" , queryset=Route.objects.all())
     airplane = serializers.SlugRelatedField(
         many=False,
-        read_only=True,
+        read_only=False,
         slug_field="id",
+        queryset=Airplane.objects.all(),
     )
 
     class Meta:
@@ -113,8 +115,30 @@ class FlightSerializer(serializers.ModelSerializer):
             "airplane",
             "departure_time",
             "arrival_time",
+            "crew"
         )
 
+
+class FlightCreateSerializer(serializers.ModelSerializer):
+    route = serializers.SlugRelatedField(many=False, read_only=False, slug_field="id" , queryset=Route.objects.all())
+    airplane = serializers.SlugRelatedField(
+        many=False,
+        read_only=False,
+        slug_field="id",
+        queryset=Airplane.objects.all(),
+    )
+    crew = CrewSerializer(many=True, read_only=False)
+
+    class Meta:
+        model = Flight
+        fields = (
+            "id",
+            "route",
+            "airplane",
+            "departure_time",
+            "arrival_time",
+            "crew"
+        )
 
 class FlightDetailSerializer(serializers.ModelSerializer):
     crew = CrewSerializer(many=True, read_only=True)

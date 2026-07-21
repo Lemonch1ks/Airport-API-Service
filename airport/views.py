@@ -25,6 +25,7 @@ from airport.serializers import (
     FlightSerializer,
     FlightDetailSerializer,
     TicketCreateSerializer,
+    FlightCreateSerializer,
 )
 
 class AirportViewSet(viewsets.ModelViewSet):
@@ -88,4 +89,6 @@ class FlightViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "retrieve":
             return FlightDetailSerializer
+        if self.action == "create":
+            return FlightCreateSerializer
         return FlightSerializer
