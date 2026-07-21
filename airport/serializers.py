@@ -1,4 +1,4 @@
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
 
@@ -68,12 +68,6 @@ class CrewSerializer(serializers.ModelSerializer):
         ]
 
 
-class OrderSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Order
-        fields = ("id", "created_at", "user")
-
-
 class RouteSerializer(serializers.ModelSerializer):
     source = serializers.SlugRelatedField(
         many=False,
@@ -125,11 +119,37 @@ class FlightCreateSerializer(serializers.ModelSerializer):
         slug_field="id",
         queryset=Airplane.objects.all(),
     )
-    crew = CrewSerializer(many=True, read_only=False)
+    crew = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Crew.objects.all(),
+    )
 
     class Meta:
         model = Flight
         fields = ("id", "route", "airplane", "departure_time", "arrival_time", "crew")
+
+    def validate(self, attrs):
+        route = attrs.get("route")
+        departure_time = attrs.get("departure_time")
+        arrival_time = attrs.get("arrival_time")
+
+        if route and route.source_id == route.destination_id:
+            raise serializers.ValidationError(
+                {"route": "Source airport must differ from destination airport."}
+            )
+
+        if departure_time and arrival_time and arrival_time <= departure_time:
+            raise serializers.ValidationError(
+                {"arrival_time": "Arrival time must be later than departure time."}
+            )
+
+        return attrs
+
+    def create(self, validated_data):
+        crew = validated_data.pop("crew", [])
+        flight = Flight.objects.create(**validated_data)
+        flight.crew.set(crew)
+        return flight
 
 
 class FlightDetailSerializer(serializers.ModelSerializer):
@@ -164,7 +184,9 @@ class TicketSerializer(serializers.ModelSerializer):
 
 
 class TicketCreateSerializer(serializers.ModelSerializer):
-    order = OrderSerializer(read_only=True)
+    flight = serializers.PrimaryKeyRelatedField(
+        queryset=Flight.objects.select_related("airplane").all(),
+    )
 
     class Meta:
         model = Ticket
@@ -172,17 +194,104 @@ class TicketCreateSerializer(serializers.ModelSerializer):
             "id",
             "row",
             "seat",
-            "order",
             "flight",
         )
+        validators = []
 
-    def create(self, validated_data):
+    def validate(self, attrs):
+        flight = attrs["flight"]
+        row = attrs["row"]
+        seat = attrs["seat"]
+        airplane = flight.airplane
+        errors = {}
+
+        if row < 1:
+            errors["row"] = "Row must be at least 1."
+        elif row > airplane.rows:
+            errors["row"] = f"Row must not exceed airplane rows ({airplane.rows})."
+
+        if seat < 1:
+            errors["seat"] = "Seat must be at least 1."
+        elif seat > airplane.seats_in_row:
+            errors["seat"] = (
+                "Seat must not exceed airplane seats in row "
+                f"({airplane.seats_in_row})."
+            )
+
+        if errors:
+            raise serializers.ValidationError(errors)
+
+        if Ticket.objects.filter(flight=flight, row=row, seat=seat).exists():
+            raise serializers.ValidationError(
+                {"non_field_errors": ["This seat is already booked for this flight."]}
+            )
+
+        return attrs
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    tickets = TicketSerializer(many=True, read_only=True)
+    user = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = Order
+        fields = ("id", "created_at", "user", "tickets")
+
+
+class OrderCreateSerializer(serializers.ModelSerializer):
+    tickets = TicketCreateSerializer(many=True, allow_empty=False)
+
+    class Meta:
+        model = Order
+        fields = ("id", "created_at", "tickets")
+        read_only_fields = ("id", "created_at")
+
+    def validate(self, attrs):
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             raise serializers.ValidationError(
-                "Authentication is required to create a ticket."
+                {"user": "Authentication is required to create an order."}
             )
 
-        with transaction.atomic():
-            order = Order.objects.create(user=request.user)
-            return Ticket.objects.create(order=order, **validated_data)
+        if "user" in self.initial_data:
+            raise serializers.ValidationError({"user": "This field is not accepted."})
+
+        tickets = attrs.get("tickets", [])
+        ticket_errors = [{} for _ in tickets]
+        seen_tickets = {}
+
+        for index, ticket in enumerate(tickets):
+            key = (ticket["flight"].id, ticket["row"], ticket["seat"])
+            previous_index = seen_tickets.get(key)
+
+            if previous_index is not None:
+                message = "Duplicate seat in this order request."
+                ticket_errors[previous_index].setdefault("non_field_errors", []).append(
+                    message
+                )
+                ticket_errors[index].setdefault("non_field_errors", []).append(message)
+            else:
+                seen_tickets[key] = index
+
+        if any(ticket_errors):
+            raise serializers.ValidationError({"tickets": ticket_errors})
+
+        return attrs
+
+    def create(self, validated_data):
+        tickets_data = validated_data.pop("tickets")
+        request = self.context["request"]
+
+        try:
+            with transaction.atomic():
+                order = Order.objects.create(user=request.user)
+                Ticket.objects.bulk_create(
+                    [Ticket(order=order, **ticket_data) for ticket_data in tickets_data]
+                )
+
+        except IntegrityError:
+            raise serializers.ValidationError(
+                {"tickets": ["One or more selected seats have already been booked."]}
+            )
+
+        return order

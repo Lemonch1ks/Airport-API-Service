@@ -103,4 +103,9 @@ class Ticket(models.Model):
     )
 
     class Meta:
-        unique_together = ("row", "seat", "flight")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("flight", "row", "seat"),
+                name="unique_ticket_seat_per_flight",
+            )
+        ]

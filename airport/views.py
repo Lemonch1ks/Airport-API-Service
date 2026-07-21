@@ -1,5 +1,5 @@
 from rest_framework import viewsets
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny
 
 from airport.permissions import IsAdminOrReadOnly
 
@@ -20,11 +20,11 @@ from airport.serializers import (
     AirplaneSerializer,
     CrewSerializer,
     OrderSerializer,
+    OrderCreateSerializer,
     TicketSerializer,
     RouteSerializer,
     FlightSerializer,
     FlightDetailSerializer,
-    TicketCreateSerializer,
     FlightCreateSerializer,
 )
 
@@ -61,26 +61,68 @@ class CrewViewSet(viewsets.ModelViewSet):
     ]
 
 
-class TicketViewSet(viewsets.ModelViewSet):
+class TicketViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Ticket.objects.all()
+    serializer_class = TicketSerializer
     permission_classes = [
         AllowAny,
     ]
 
     def get_queryset(self):
-        queryset = super().get_queryset()
-
-        if self.action in ("list", "retrieve"):
-            queryset = queryset.select_related().prefetch_related(
-                "flight__crew",
+        queryset = (
+            super()
+            .get_queryset()
+            .select_related(
+                "order__user",
+                "flight__airplane",
+                "flight__route",
             )
+            .prefetch_related("flight__crew")
+        )
 
-        return queryset
+        user = self.request.user
+
+        if user.is_staff:
+            return queryset
+
+        if user.is_authenticated:
+            return queryset.filter(order__user=user)
+
+        return queryset.none()
+
+
+class OrderViewSet(viewsets.ModelViewSet):
+    queryset = Order.objects.all()
+    permission_classes = [
+        AllowAny,
+    ]
+
+    def get_queryset(self):
+        queryset = (
+            super()
+            .get_queryset()
+            .select_related("user")
+            .prefetch_related(
+                "tickets__flight__airplane",
+                "tickets__flight__route",
+                "tickets__flight__crew",
+            )
+        )
+
+        user = self.request.user
+
+        if user.is_staff:
+            return queryset
+
+        if user.is_authenticated:
+            return queryset.filter(user=user)
+
+        return queryset.none()
 
     def get_serializer_class(self):
         if self.action == "create":
-            return TicketCreateSerializer
-        return TicketSerializer
+            return OrderCreateSerializer
+        return OrderSerializer
 
 
 class RouteViewSet(viewsets.ModelViewSet):
