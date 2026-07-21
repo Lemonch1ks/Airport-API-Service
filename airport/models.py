@@ -88,7 +88,6 @@ class Flight(models.Model):
             f" id:{self.id} route:{self.route.source} → {self.route.destination}"
         )
 
-
 class Ticket(models.Model):
     row = models.IntegerField()
     seat = models.IntegerField()
@@ -102,3 +101,6 @@ class Ticket(models.Model):
         on_delete=models.CASCADE,
         related_name="tickets"
     )
+
+    class Meta:
+        unique_together = ("row", "seat", "flight")

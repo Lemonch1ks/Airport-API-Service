@@ -185,5 +185,4 @@ class TicketCreateSerializer(serializers.ModelSerializer):
 
         with transaction.atomic():
             order = Order.objects.create(user=request.user)
-
             return Ticket.objects.create(order=order, **validated_data)
