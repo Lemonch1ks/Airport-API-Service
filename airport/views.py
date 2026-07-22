@@ -281,6 +281,6 @@ class FlightViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "retrieve":
             return FlightDetailSerializer
-        if self.action == "create":
+        if self.action in ("create", "update", "partial_update"):
             return FlightCreateSerializer
         return FlightSerializer

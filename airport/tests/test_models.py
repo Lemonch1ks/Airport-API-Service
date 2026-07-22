@@ -51,7 +51,7 @@ class Modelest(TestCase):
         )
 
         self.Ticket = Ticket.objects.create(
-            row=12, seat=5, flight=self.flight, order=self.order
+            row=12, seat=2, flight=self.flight, order=self.order
         )
 
     def test_crew_str(self):
