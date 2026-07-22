@@ -178,6 +178,15 @@ class FlightDetailSerializer(serializers.ModelSerializer):
             "crew",
             "airplane",
         )
+    def validate(self, attrs):
+        departure_time = attrs.get("departure_time")
+        arrival_time = attrs.get("arrival_time")
+
+        if departure_time >= arrival_time:
+            raise serializers.ValidationError(
+                {"time_error": "Departure time can't be later than arrival time."}
+            )
+        return attrs
 
 
 class TicketSerializer(serializers.ModelSerializer):

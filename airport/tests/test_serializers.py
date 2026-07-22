@@ -143,7 +143,7 @@ class SerializerTests(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_cannot_exeed_planes_seat(self):
+    def test_cannot_exceed_planes_seat(self):
         """max rows: 12. max seats: 3"""
         payload = {
             "tickets1": [
@@ -158,7 +158,7 @@ class SerializerTests(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_cannot_exeed_planes_row(self):
+    def test_cannot_exceed_planes_row(self):
         """max rows: 12. max seats: 3"""
         payload = {
             "tickets1": [
@@ -196,3 +196,19 @@ class SerializerTests(TestCase):
             status.HTTP_201_CREATED,
             response.data,
         )
+
+    def test_departure_time_cant_exceed_arrival_time(self):
+        payload = {
+            "flight": [
+                {
+                "route": self.route.pk,
+                "airplane": self.airplane.pk,
+                "departure_time": timezone.make_aware(datetime(2026, 7, 24, 12, 30)),
+                "arrival_time": timezone.make_aware(datetime(2026, 7, 23, 15, 30)),
+                }
+            ]
+        }
+        response = self.user_client.post("/api/airport/flights/", payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
