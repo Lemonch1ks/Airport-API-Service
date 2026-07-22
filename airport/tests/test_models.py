@@ -88,5 +88,5 @@ class Modelest(TestCase):
         with self.assertRaises(IntegrityError):
             with transaction.atomic():
                 Ticket.objects.create(
-                    row=12, seat=5, flight=self.flight, order=self.order
+                    row=12, seat=2, flight=self.flight, order=self.order
                 )

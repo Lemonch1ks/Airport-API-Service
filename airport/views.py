@@ -35,9 +35,7 @@ def _query_param_values(query_params, *param_names):
     values = []
     for param_name in param_names:
         for value in query_params.getlist(param_name):
-            values.extend(
-                part.strip() for part in value.split(",") if part.strip()
-            )
+            values.extend(part.strip() for part in value.split(",") if part.strip())
     return values
 
 
@@ -66,9 +64,8 @@ def _filter_by_airport(queryset, query_params, relation_name, *param_names):
         if value.isdecimal():
             query |= Q(**{f"{relation_name}_id": int(value)})
 
-        query |= (
-            Q(**{f"{relation_name}__name__icontains": value})
-            | Q(**{f"{relation_name}__closest_big_city__icontains": value})
+        query |= Q(**{f"{relation_name}__name__icontains": value}) | Q(
+            **{f"{relation_name}__closest_big_city__icontains": value}
         )
 
     return queryset.filter(query)

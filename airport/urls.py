@@ -14,11 +14,11 @@ from airport.views import (
 
 router = routers.DefaultRouter()
 
-router.register('airports', AirportViewSet)
-router.register('airplanes/types', AirplaneTypeViewSet)
-router.register('airplanes', AirplaneViewSet)
-router.register('orders', OrderViewSet)
-router.register('tickets', TicketViewSet)
+router.register("airports", AirportViewSet)
+router.register("airplanes/types", AirplaneTypeViewSet)
+router.register("airplanes", AirplaneViewSet)
+router.register("orders", OrderViewSet)
+router.register("tickets", TicketViewSet)
 router.register("routes", RouteViewSet)
 router.register("flights", FlightViewSet)
 router.register("crews", CrewViewSet)

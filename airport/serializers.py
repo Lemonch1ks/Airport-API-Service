@@ -192,6 +192,7 @@ class FlightDetailSerializer(serializers.ModelSerializer):
             "crew",
             "airplane",
         )
+
     def validate(self, attrs):
         departure_time = attrs.get("departure_time")
         arrival_time = attrs.get("arrival_time")
