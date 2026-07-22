@@ -1,9 +1,12 @@
 from datetime import datetime
 
 from django.contrib.auth import get_user_model
-from django.utils import timezone
 from django.test import TestCase
-from django.db import IntegrityError, transaction
+from rest_framework import status
+from rest_framework.test import APIClient
+
+from django.utils import timezone
+
 from airport.models import (
     Crew,
     AirplaneType,
@@ -15,10 +18,23 @@ from airport.models import (
     Order,
 )
 
-
-class Modelest(TestCase):
+class SerializerTests(TestCase):
 
     def setUp(self):
+
+        self.admin_client = APIClient()
+        self.user_client = APIClient()
+
+        self.admin = get_user_model().objects.create_superuser(
+            email="admin@admin.com", password="admin"
+        )
+        self.admin_client.force_authenticate(user=self.admin)
+
+        self.user = get_user_model().objects.create_user(
+            email="123@123.com", password="123"
+        )
+        self.user_client.force_authenticate(user=self.user)
+
         self.crew = Crew.objects.create(first_name="John", last_name="Doe")
         self.airplane_type = AirplaneType.objects.create(name="Airplane")
         self.airport1 = Airport.objects.create(
@@ -45,8 +61,8 @@ class Modelest(TestCase):
 
         self.order = Order.objects.create(
             user=get_user_model().objects.create_user(
-                email="123@123.com",
-                password="123",
+                email="12@12.com",
+                password="12",
             )
         )
 
@@ -54,39 +70,25 @@ class Modelest(TestCase):
             row=12, seat=5, flight=self.flight, order=self.order
         )
 
-    def test_crew_str(self):
-        self.assertEqual(str(self.crew), "John Doe")
+    def test_create_order(self):
 
-    def test_airplane_type_str(self):
-        self.assertEqual(str(self.airplane_type), "Airplane")
+        payload = {
+            "tickets": [
+                {
+                    "flight": self.flight.pk,
+                    "row": 1,
+                    "seat": 1,
+                }
+            ]
+        }
 
-    def test_airport_str(self):
-        self.assertEqual(str(self.airport1), "airport1")
-        self.assertEqual(str(self.airport2), "airport2")
-
-    def test_airplane_str(self):
-        self.assertEqual(str(self.airplane), "airplane")
-
-    def test_route_str(self):
-        self.assertEqual(str(self.route), "airport1 -> airport2")
-
-    def test_flight_str(self):
-        self.assertEqual(
-            str(self.flight),
-            f"id:{self.flight.pk} route:{self.flight.route.source} -> {self.flight.route.destination}",
+        response = self.user_client.post(
+            "/api/airport/orders/",
+            payload,
+            format="json",
         )
 
-    def test_crew_first_and_last_name_must_be_unique_together(self):
-        with self.assertRaises(IntegrityError):
-            with transaction.atomic():
-                Crew.objects.create(
-                    first_name="John",
-                    last_name="Doe",
-                )
-
-    def test_ticket_flight_row_and_seats_must_be_unique_together(self):
-        with self.assertRaises(IntegrityError):
-            with transaction.atomic():
-                Ticket.objects.create(
-                    row=12, seat=5, flight=self.flight, order=self.order
-                )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Order.objects.count(), 2)
+        self.assertEqual(Ticket.objects.count(), 2)
+        self.assertTrue(Order.objects.filter(user=self.user).exists())

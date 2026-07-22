@@ -25,8 +25,8 @@ from airport.serializers import (
     FlightSerializer,
     FlightDetailSerializer,
     FlightCreateSerializer,
+    OrderCreateSerializer,
 )
-
 
 class AirportViewSet(viewsets.ModelViewSet):
     queryset = Airport.objects.all().select_related()
@@ -120,7 +120,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action in ("create", "update", "partial_update"):
-            return FlightCreateSerializer
+            return OrderCreateSerializer
         return OrderSerializer
 
 
