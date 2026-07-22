@@ -18,6 +18,7 @@ from airport.models import (
     Order,
 )
 
+
 class SerializerTests(TestCase):
 
     def setUp(self):
@@ -92,3 +93,106 @@ class SerializerTests(TestCase):
         self.assertEqual(Order.objects.count(), 2)
         self.assertEqual(Ticket.objects.count(), 2)
         self.assertTrue(Order.objects.filter(user=self.user).exists())
+
+    def test_cannot_book_the_same_seat(self):
+        payload = {
+            "tickets1": [
+                {
+                    "flight": self.flight.pk,
+                    "row": 1,
+                    "seat": 1,
+                }
+            ],
+            "ticket2": [
+                {
+                    "flight": self.flight.pk,
+                    "row": 1,
+                    "seat": 1,
+                }
+            ],
+        }
+        response = self.user_client.post("/api/airport/orders/", payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_cannot_book_0_seat(self):
+        payload = {
+            "tickets1": [
+                {
+                    "flight": self.flight.pk,
+                    "row": 1,
+                    "seat": 0,
+                }
+            ],
+        }
+        response = self.user_client.post("/api/airport/orders/", payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_cannot_book_0_row(self):
+        payload = {
+            "tickets1": [
+                {
+                    "flight": self.flight.pk,
+                    "row": 0,
+                    "seat": 1,
+                }
+            ],
+        }
+        response = self.user_client.post("/api/airport/orders/", payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_cannot_exeed_planes_seat(self):
+        """max rows: 12. max seats: 3"""
+        payload = {
+            "tickets1": [
+                {
+                    "flight": self.flight.pk,
+                    "row": 13,
+                    "seat": 1,
+                }
+            ],
+        }
+        response = self.user_client.post("/api/airport/orders/", payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_cannot_exeed_planes_row(self):
+        """max rows: 12. max seats: 3"""
+        payload = {
+            "tickets1": [
+                {
+                    "flight": self.flight.pk,
+                    "row": 10,
+                    "seat": 4,
+                }
+            ],
+        }
+        response = self.user_client.post("/api/airport/orders/", payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_can_book_border_nums(self):
+
+        payload = {
+            "tickets": [
+                {
+                    "flight": self.flight.pk,
+                    "row": self.airplane.rows,
+                    "seat": self.airplane.seats_in_row,
+                }
+            ]
+        }
+
+        response = self.user_client.post(
+            "/api/airport/orders/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_201_CREATED,
+            response.data,
+        )
