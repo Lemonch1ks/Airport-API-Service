@@ -85,7 +85,7 @@ class Flight(models.Model):
 
     def __str__(self):
         return (
-            f" id:{self.id} route:{self.route.source} → {self.route.destination}"
+            f"id:{self.id} route:{self.route.source} -> {self.route.destination}"
         )
 
 class Ticket(models.Model):
