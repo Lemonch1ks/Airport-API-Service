@@ -255,11 +255,6 @@ class TicketCreateSerializer(serializers.ModelSerializer):
         if errors:
             raise serializers.ValidationError(errors)
 
-        if Ticket.objects.filter(flight=flight, row=row, seat=seat).exists():
-            raise serializers.ValidationError(
-                {"non_field_errors": ["This seat is already booked for this flight."]}
-            )
-
         return attrs
 
 
@@ -307,6 +302,20 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             else:
                 seen_tickets[key] = index
 
+            booked_seat = Ticket.objects.filter(
+                flight=ticket["flight"],
+                row=ticket["row"],
+                seat=ticket["seat"],
+            )
+
+            if self.instance:
+                booked_seat = booked_seat.exclude(order=self.instance)
+
+            if booked_seat.exists():
+                ticket_errors[index].setdefault("non_field_errors", []).append(
+                    "This seat is already booked for this flight."
+                )
+
         if any(ticket_errors):
             raise serializers.ValidationError({"tickets": ticket_errors})
 
@@ -323,9 +332,32 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                     [Ticket(order=order, **ticket_data) for ticket_data in tickets_data]
                 )
 
-        except IntegrityError:
+        except IntegrityError as exc:
             raise serializers.ValidationError(
                 {"tickets": ["One or more selected seats have already been booked."]}
-            )
+            ) from exc
 
         return order
+
+    def update(self, instance, validated_data):
+        tickets_data = validated_data.pop("tickets", None)
+
+        if tickets_data is None:
+            return instance
+
+        try:
+            with transaction.atomic():
+                instance.tickets.all().delete()
+                Ticket.objects.bulk_create(
+                    [
+                        Ticket(order=instance, **ticket_data)
+                        for ticket_data in tickets_data
+                    ]
+                )
+
+        except IntegrityError as exc:
+            raise serializers.ValidationError(
+                {"tickets": ["One or more selected seats have already been booked."]}
+            ) from exc
+
+        return instance

@@ -208,7 +208,11 @@ class SerializerTests(TestCase):
             "departure_time": timezone.make_aware(datetime(2026, 7, 24, 12, 30)),
             "arrival_time": timezone.make_aware(datetime(2026, 7, 23, 15, 30)),
         }
-        response = self.user_client.post("/api/airport/flights/", payload, format="json")
+        response = self.admin_client.post(
+            "/api/airport/flights/",
+            payload,
+            format="json",
+        )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("arrival_time", response.data)
@@ -220,7 +224,136 @@ class SerializerTests(TestCase):
             "destination": self.airport1.name,
             "distance": 10,
         }
-        response = self.user_client.post("/api/airport/routes/", payload, format="json")
+        response = self.admin_client.post(
+            "/api/airport/routes/",
+            payload,
+            format="json",
+        )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("destination", response.data)
+
+    def test_update_order_replaces_tickets(self):
+        order = Order.objects.create(user=self.user)
+        Ticket.objects.create(
+            row=1,
+            seat=1,
+            flight=self.flight,
+            order=order,
+        )
+        payload = {
+            "tickets": [
+                {
+                    "flight": self.flight.pk,
+                    "row": 1,
+                    "seat": 2,
+                }
+            ]
+        }
+
+        response = self.user_client.put(
+            f"/api/airport/orders/{order.pk}/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        order.refresh_from_db()
+        self.assertEqual(order.tickets.count(), 1)
+        self.assertTrue(
+            order.tickets.filter(
+                flight=self.flight,
+                row=1,
+                seat=2,
+            ).exists()
+        )
+
+    def test_cannot_update_order_with_booked_ticket(self):
+        order = Order.objects.create(user=self.user)
+        Ticket.objects.create(
+            row=1,
+            seat=1,
+            flight=self.flight,
+            order=order,
+        )
+        other_order = Order.objects.create(user=self.user)
+        Ticket.objects.create(
+            row=2,
+            seat=2,
+            flight=self.flight,
+            order=other_order,
+        )
+        payload = {
+            "tickets": [
+                {
+                    "flight": self.flight.pk,
+                    "row": 2,
+                    "seat": 2,
+                }
+            ]
+        }
+
+        response = self.user_client.put(
+            f"/api/airport/orders/{order.pk}/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("tickets", response.data)
+
+    def test_filter_routes_by_source_and_destination(self):
+        airport3 = Airport.objects.create(
+            name="airport3",
+            closest_big_city="Paris",
+        )
+        matching_route = Route.objects.create(
+            source=self.airport1,
+            destination=airport3,
+            distance=20,
+        )
+        Route.objects.create(
+            source=self.airport2,
+            destination=airport3,
+            distance=30,
+        )
+
+        response = self.user_client.get(
+            "/api/airport/routes/",
+            {"source": self.airport1.pk, "destination": "Paris"},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual([route["id"] for route in response.data], [matching_route.pk])
+
+    def test_filter_flights_by_route_and_departure_date(self):
+        airport3 = Airport.objects.create(
+            name="airport3",
+            closest_big_city="Paris",
+        )
+        route = Route.objects.create(
+            source=self.airport1,
+            destination=airport3,
+            distance=20,
+        )
+        matching_flight = Flight.objects.create(
+            route=route,
+            airplane=self.airplane,
+            departure_time=timezone.make_aware(datetime(2026, 7, 24, 12, 30)),
+            arrival_time=timezone.make_aware(datetime(2026, 7, 24, 15, 30)),
+        )
+        matching_flight.crew.add(self.crew)
+
+        response = self.user_client.get(
+            "/api/airport/flights/",
+            {
+                "route": route.pk,
+                "departure_date": "2026-07-24",
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            [flight["id"] for flight in response.data],
+            [matching_flight.pk],
+        )
