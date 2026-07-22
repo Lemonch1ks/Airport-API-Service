@@ -91,6 +91,20 @@ class RouteSerializer(serializers.ModelSerializer):
             "distance",
         )
 
+    def validate(self, attrs):
+        source = attrs.get("source", getattr(self.instance, "source", None))
+        destination = attrs.get(
+            "destination",
+            getattr(self.instance, "destination", None),
+        )
+
+        if source and destination and source == destination:
+            raise serializers.ValidationError(
+                {"destination": "Destination airport must differ from source airport."}
+            )
+
+        return attrs
+
 
 class FlightSerializer(serializers.ModelSerializer):
     route = serializers.SlugRelatedField(

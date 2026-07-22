@@ -68,7 +68,7 @@ class SerializerTests(TestCase):
         )
 
         self.Ticket = Ticket.objects.create(
-            row=12, seat=5, flight=self.flight, order=self.order
+            row=12, seat=1, flight=self.flight, order=self.order
         )
 
     def test_create_order(self):
@@ -92,32 +92,31 @@ class SerializerTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Order.objects.count(), 2)
         self.assertEqual(Ticket.objects.count(), 2)
-        self.assertTrue(Order.objects.filter(user=self.user).exists())
+        self.assertEqual(Order.objects.get(id=response.data["id"]).user, self.user)
 
-    def test_cannot_book_the_same_seat(self):
+    def test_cannot_book_duplicate_seats_in_the_same_order(self):
         payload = {
-            "tickets1": [
+            "tickets": [
                 {
                     "flight": self.flight.pk,
                     "row": 1,
                     "seat": 1,
-                }
-            ],
-            "ticket2": [
+                },
                 {
                     "flight": self.flight.pk,
                     "row": 1,
                     "seat": 1,
-                }
-            ],
+                },
+            ]
         }
         response = self.user_client.post("/api/airport/orders/", payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("tickets", response.data)
 
     def test_cannot_book_0_seat(self):
         payload = {
-            "tickets1": [
+            "tickets": [
                 {
                     "flight": self.flight.pk,
                     "row": 1,
@@ -128,10 +127,11 @@ class SerializerTests(TestCase):
         response = self.user_client.post("/api/airport/orders/", payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("seat", response.data["tickets"][0])
 
     def test_cannot_book_0_row(self):
         payload = {
-            "tickets1": [
+            "tickets": [
                 {
                     "flight": self.flight.pk,
                     "row": 0,
@@ -142,11 +142,12 @@ class SerializerTests(TestCase):
         response = self.user_client.post("/api/airport/orders/", payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("row", response.data["tickets"][0])
 
-    def test_cannot_exceed_planes_seat(self):
+    def test_cannot_exceed_planes_row(self):
         """max rows: 12. max seats: 3"""
         payload = {
-            "tickets1": [
+            "tickets": [
                 {
                     "flight": self.flight.pk,
                     "row": 13,
@@ -157,11 +158,12 @@ class SerializerTests(TestCase):
         response = self.user_client.post("/api/airport/orders/", payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("row", response.data["tickets"][0])
 
-    def test_cannot_exceed_planes_row(self):
+    def test_cannot_exceed_planes_seat(self):
         """max rows: 12. max seats: 3"""
         payload = {
-            "tickets1": [
+            "tickets": [
                 {
                     "flight": self.flight.pk,
                     "row": 10,
@@ -172,6 +174,7 @@ class SerializerTests(TestCase):
         response = self.user_client.post("/api/airport/orders/", payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("seat", response.data["tickets"][0])
 
     def test_can_book_border_nums(self):
 
@@ -199,29 +202,25 @@ class SerializerTests(TestCase):
 
     def test_departure_time_cant_exceed_arrival_time(self):
         payload = {
-            "flight": [
-                {
-                "route": self.route.pk,
-                "airplane": self.airplane.pk,
-                "departure_time": timezone.make_aware(datetime(2026, 7, 24, 12, 30)),
-                "arrival_time": timezone.make_aware(datetime(2026, 7, 23, 15, 30)),
-                }
-            ]
+            "route": self.route.pk,
+            "airplane": self.airplane.pk,
+            "crew": [self.crew.pk],
+            "departure_time": timezone.make_aware(datetime(2026, 7, 24, 12, 30)),
+            "arrival_time": timezone.make_aware(datetime(2026, 7, 23, 15, 30)),
         }
         response = self.user_client.post("/api/airport/flights/", payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("arrival_time", response.data)
 
     def test_departure_place_cant_be_the_same_as_arrival_place(self):
 
         payload = {
-            "route": [
-                {
-                    "source": self.airport1.pk,
-                    "destination": self.airport1.pk,
-                }
-            ]
+            "source": self.airport1.name,
+            "destination": self.airport1.name,
+            "distance": 10,
         }
         response = self.user_client.post("/api/airport/routes/", payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("destination", response.data)
