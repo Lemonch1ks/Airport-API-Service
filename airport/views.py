@@ -20,7 +20,6 @@ from airport.serializers import (
     AirplaneSerializer,
     CrewSerializer,
     OrderSerializer,
-    OrderCreateSerializer,
     TicketSerializer,
     RouteSerializer,
     FlightSerializer,
@@ -30,7 +29,7 @@ from airport.serializers import (
 
 
 class AirportViewSet(viewsets.ModelViewSet):
-    queryset = Airport.objects.all()
+    queryset = Airport.objects.all().select_related()
     serializer_class = AirportSerializer
     permission_classes = [
         AllowAny,
@@ -120,8 +119,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         return queryset.none()
 
     def get_serializer_class(self):
-        if self.action == "create":
-            return OrderCreateSerializer
+        if self.action in ("create", "update", "partial_update"):
+            return FlightCreateSerializer
         return OrderSerializer
 
 

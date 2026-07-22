@@ -94,14 +94,17 @@ class RouteSerializer(serializers.ModelSerializer):
 
 class FlightSerializer(serializers.ModelSerializer):
     route = serializers.SlugRelatedField(
-        many=False, read_only=False, slug_field="id", queryset=Route.objects.all().select_related()
+        many=False,
+        read_only=False,
+        slug_field="id",
+        queryset=Route.objects.all().select_related(),
     )
 
     airplane = serializers.SlugRelatedField(
         many=False,
         read_only=False,
         slug_field="id",
-        queryset=Airplane.objects.all().select_related()
+        queryset=Airplane.objects.all().select_related(),
     )
 
     class Meta:
@@ -130,8 +133,16 @@ class FlightCreateSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         route = attrs.get("route")
-        departure_time = attrs.get("departure_time")
-        arrival_time = attrs.get("arrival_time")
+
+        departure_time = attrs.get(
+            "departure_time",
+            getattr(self.instance, "departure_time", None),
+        )
+
+        arrival_time = attrs.get(
+            "arrival_time",
+            getattr(self.instance, "arrival_time", None),
+        )
 
         if route and route.source_id == route.destination_id:
             raise serializers.ValidationError(
