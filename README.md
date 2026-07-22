@@ -2,6 +2,8 @@
 
 Airport API Service is a REST API for managing airports, airplanes, routes, flights, crews, orders, and tickets. It supports JWT authentication, role-based access, flight search, and seat booking with validation against duplicate reservations.
 
+![](https://media.mate.academy/airport_diagram_ce181e403f.png)
+
 ## Features
 
 - User registration and JWT authentication
