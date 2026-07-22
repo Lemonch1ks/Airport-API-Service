@@ -212,3 +212,16 @@ class SerializerTests(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_departure_place_cant_be_the_same_as_arrival_place(self):
+
+        payload = {
+            "route": [
+                {
+                    "source": self.airport1.pk,
+                    "destination": self.airport1.pk,
+                }
+            ]
+        }
+        response = self.user_client.post("/api/airport/routes/", payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
