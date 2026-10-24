@@ -2,7 +2,9 @@
 
 Airport API Service is a REST API for managing airports, airplanes, routes, flights, crews, orders, and tickets. It supports JWT authentication, role-based access, flight search, and seat booking with validation against duplicate reservations.
 
-![](https://media.mate.academy/airport_diagram_ce181e403f.png)
+This is a learning project built as part of the Mate Academy Python course. The task and the database diagram below were provided by the course.
+
+![Airport database diagram](https://media.mate.academy/airport_diagram_ce181e403f.png)
 
 ## Features
 
@@ -49,23 +51,30 @@ The combination of flight, row, and seat is unique, so the same seat cannot be b
 ### 1. Clone the repository
 
 ```bash
-git clone -b develop https://github.com/Lemonch1ks/Airport-API-Service.git
+git clone https://github.com/Lemonch1ks/Airport-API-Service.git
 cd Airport-API-Service
 ```
 
 ### 2. Create the environment file
 
-Create a `.env` file in the project root:
+Copy the template and fill in the values:
 
-```env
-POSTGRES_DB=airport
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-POSTGRES_HOST=db
-POSTGRES_PORT=5432
+```bash
+cp .env.sample .env
 ```
 
-`POSTGRES_HOST` must be `db` when the application is started with Docker Compose because `db` is the database service name.
+```env
+POSTGRES_DB=airport_db
+POSTGRES_USER=airport_user
+POSTGRES_PASSWORD=change_me
+POSTGRES_HOST=db
+POSTGRES_PORT=5432
+
+SECRET_KEY=your-secret-key
+DEBUG=True
+```
+
+`SECRET_KEY` is required: Django will not start without it. `POSTGRES_HOST` must be `db` when the application is started with Docker Compose because `db` is the database service name.
 
 ### 3. Build and start the containers
 
@@ -299,7 +308,7 @@ docker compose exec app sh
 Open the PostgreSQL console:
 
 ```bash
-docker compose exec db psql -U postgres -d airport
+docker compose exec db psql -U airport_user -d airport_db
 ```
 
 View container logs:
